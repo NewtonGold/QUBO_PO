@@ -73,6 +73,21 @@ def add_constraints(x: list, final_H: int, K: int) -> int:
     final_H += ((K - sum(x))**2) * 5
     return final_H
 
+def total_investment_constraint(x: list, p: int) -> int:
+    constraint = p * ((100 - sum(x))**2)
+    return constraint
+
+def cardinality_constraint(x: list, p: int):
+    constraint = 0
+    count = 0
+    for variable in x:
+        if count == 6:
+            x.append(temp[i] * 37)
+            count = 0
+        else:
+            x.append(temp[i] * (2 ** count))
+            count = count + 1
+
 def initialise_binary_variables(N: int) -> list:
     temp = Array.create('x', shape=(N*7), vartype='BINARY')
     x = []
