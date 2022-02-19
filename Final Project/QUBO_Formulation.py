@@ -12,15 +12,12 @@ def main():
     mew = [0.004798, 0.000659, 0.003174, 0.001377]
     l = Placeholder('l')
     #initailising binary variables in an array
-    #initial = Array.create('x', shape=(N*7), vartype='BINARY')
-    initial = Array.create('x', shape=(3), vartype='BINARY')
-    print("marker 1")
-    penalty = or_penalty(initial)
-    print("marker 2")
-    f = open("or_penalty.txt", "w")
-    f.write(str(penalty))
-    f.close()
-    return 0
+    initial = Array.create('x', shape=(N*7), vartype='BINARY')
+    #initial = Array.create('x', shape=(3), vartype='BINARY')
+    constraint = cardinality_constraint(initial, 5, K)
+    #f = open("or_penalty.txt", "w")
+    #f.write(str(constraint))
+    #f.close()
     x = initialise_binary_variables(N, initial)
 
     #x = Array.fill(LogEncInteger('x', (0, 100)), shape=N)
@@ -91,20 +88,24 @@ def cardinality_constraint(x: list, p: int, K: int):
     constraint = K
     count = 0
     for i in range(0, (len(x) - 7), 7):
-        constraint -= or_penalty(x[i:i+7])
-    constraint = (constraint ** 2) * p
+        temp = []
+        for i in range(i, i+7, 1):
+            temp.append(x[i]) 
+        constraint -= or_penalty(temp)
+    constraint = p * (constraint ** 2)
+    return constraint
 
 def or_penalty(x: list) -> int:
     if len(x) > 2:
         print(len(x))
-        y=[]
+        temp=[]
         for i in range(1, len(x)):
-            y.append(x[i]) 
-        current_penalty = or_penalty(y)
-        return (1 - x[0] - current_penalty + x[0] * current_penalty)
+            temp.append(x[i]) 
+        current_penalty = or_penalty(temp)
+        return (x[0] + current_penalty - x[0] * current_penalty)
     else:
         print(len(x))
-        return (1 - x[0] - x[1] + (x[0] * x[1]))
+        return (x[0] + x[1] - (x[0] * x[1]))
 
 def initialise_binary_variables(N: int, initial: list) -> list:
     x = []
