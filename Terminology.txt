@@ -1,0 +1,2 @@
+Slack Variable: Type of auxilary variable used to turn inequality constrints in equality constraints
+Auxilary Variable: Extra variables used which are not part of the main optimisation problem

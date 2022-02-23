@@ -1,6 +1,7 @@
 from pyqubo import Binary, Array, Placeholder
 import dimod
 import neal
+import pprint 
 
 def main():
 
@@ -14,20 +15,25 @@ def main():
     #initailising binary variables in an array
     initial = Array.create('x', shape=(N*7), vartype='BINARY')
     #initial = Array.create('x', shape=(3), vartype='BINARY')
-    constraint = cardinality_constraint(initial, 5, K)
     #f = open("or_penalty.txt", "w")
     #f.write(str(constraint))
     #f.close()
     x = initialise_binary_variables(N, initial)
 
     #x = Array.fill(LogEncInteger('x', (0, 100)), shape=N)
-    print(type(l))
+    #print(type(l))
 
     # creates the cardinality constrained model
     H1 = create_hamiltonian_1(x, N, l, sd)
     H2 = create_hamiltonian_2(x, N, l, mew)
-    model = create_cc_model(x, H1, H2, K)
-    print(model)
+    model = create_cc_model(x, initial, H1, H2, K)
+    print("flag6")
+    qubo, offset = model.to_qubo()
+    pprint(qubo)
+    f = open("qubo.txt", "w")
+    f.write(pprint(qubo))
+    f.close()
+    return 0
     
 
     #qubo, offset = model.to_qubo(feed_dict={'l': 0.5})
@@ -50,12 +56,17 @@ def main():
         best_sample = min(decoded_samples, key=lambda x: x.energy)
         print('The best solution is: ' + str(best_sample.sample))
 
-def create_cc_model(x: list, H1: int, H2: int, K: int) -> list:
+def create_cc_model(x: list, initial: list, H1: int, H2: int, K: int) -> list:
     
     final_H = H1 - H2
-    #final_H = add_constraints(x, final_H, K)
+    final_H = add_constraints(x, initial, final_H, K)
+    print("flag4")
     model = final_H.compile()
-    print(type(model))
+    print("flag5")
+    f = open("model.txt", "w")
+    f.write(pprint(model))
+    f.close()
+    #print(type(model))
     return model
 
 def create_hamiltonian_1(x: list, N: int, l: int, sd: list) -> int:
@@ -75,9 +86,12 @@ def create_hamiltonian_2(x: list, N: int, l: int, mew: list) -> int:
     H2 = (1 - l) * H2
     return H2
 
-def add_constraints(x: list, final_H: int, K: int) -> int:
-    
-    final_H += ((K - sum(x))**2) * 5
+def add_constraints(x: list, initial: list,  final_H: int, K: int) -> int:
+    print("flag1")
+    final_H += cardinality_constraint(initial, 5, K)
+    print("flag2")
+    final_H += total_investment_constraint(x, 5)
+    print("flag3")
     return final_H
 
 def total_investment_constraint(x: list, p: int) -> int:
@@ -97,14 +111,12 @@ def cardinality_constraint(x: list, p: int, K: int):
 
 def or_penalty(x: list) -> int:
     if len(x) > 2:
-        print(len(x))
         temp=[]
         for i in range(1, len(x)):
             temp.append(x[i]) 
         current_penalty = or_penalty(temp)
         return (x[0] + current_penalty - x[0] * current_penalty)
     else:
-        print(len(x))
         return (x[0] + x[1] - (x[0] * x[1]))
 
 def initialise_binary_variables(N: int, initial: list) -> list:
