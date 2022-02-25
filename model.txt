@@ -1,0 +1,1 @@
+<cpp_pyqubo.Model object at 0x000001D26BF6CD30>
