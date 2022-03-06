@@ -1,16 +1,12 @@
 from pyqubo import Binary, Array, Placeholder
 import dimod
 import neal
-import pprint 
+import numpy as np
 
-def main():
+def CC_Qubo(N, K, sd, mew) -> np.matrix:
 
     #initialising variables, sd and mew will be read from file later
-    N = 4
-    K = 2
-    sd = [[1,0.118368,0.143822,0.252213],[0.118368, 1, 0.164589, 0.099763],\
-        [0.143822,0.164589,1,0.083122],[0.252213,0.099763,0.083122,1]]
-    mew = [0.004798, 0.000659, 0.003174, 0.001377]
+    
     l = Placeholder('l')
     #initailising binary variables in an array
     initial = Array.create('x', shape=((N+1)*7), vartype='BINARY')
@@ -42,7 +38,8 @@ def main():
     f = open("qubo.txt", "w")
     f.write(str(qubo))
     f.close()
-    #return 0
+    #model.to_numpy_matrix()
+    #return qubo
     
 
     #qubo, offset = model.to_qubo(feed_dict={'l': 0.5})
@@ -68,7 +65,7 @@ def main():
 def create_cc_model(x: list, aux: list, H1: int, H2: int, K: int) -> list:
     
     final_H = H1 - H2
-    final_H = add_constraints(x, aux, final_H, K)
+    #final_H = add_constraints(x, aux, final_H, K)
     model = final_H.compile()
     f = open("final_H.txt", "w")
     f.write(str(final_H))
@@ -123,4 +120,9 @@ def initialise_binary_variables(N: int, initial: list, aux: list) -> list:
 
 
 if __name__ == '__main__':
-    main()
+    N = 4
+    K = 2
+    sd = [[1,0.118368,0.143822,0.252213],[0.118368, 1, 0.164589, 0.099763],\
+        [0.143822,0.164589,1,0.083122],[0.252213,0.099763,0.083122,1]]
+    mew = [0.004798, 0.000659, 0.003174, 0.001377]
+    main(N, K, sd, mew)
