@@ -1,11 +1,13 @@
 from qubovert import boolean_var
-from qubovert.sim import anneal_pubo
+from qubovert.sim import anneal_qubo
 
 def solve_problem():
     N = 4
     K = 2
-    sd = [[1,0.118368,0.143822,0.252213],[0.118368, 1, 0.164589, 0.099763],\
-        [0.143822,0.164589,1,0.083122],[0.252213,0.099763,0.083122,1]]
+    cov = [[0.0021484, 0.0001678, 0.0002031, 0.0004182], 
+        [0.0001678, 0.0009351, 0.0001534, 0.0001091],
+        [0.0002031, 0.0001534, 0.0009287, 9.06e-05],
+        [0.0004182, 0.0001091, 9.06e-05, 0.0012795]]
     mew = [0.004798, 0.000659, 0.003174, 0.001377]
 
     x = {i: boolean_var('x(%d)' % i) for i in range(N)}
@@ -13,7 +15,7 @@ def solve_problem():
     model1 = 0
     for i in range(N-1):
         for j in range(N-1):
-            model1 += x[i] * x[j] * sd[i][j]
+            model1 += x[i] * x[j] * cov[i][j]
 
     model2 = 0
     for i in range(N-1):
@@ -22,8 +24,9 @@ def solve_problem():
     l = 0
     while l <= 1:
         final_model = (l * model1) - ((1-l) * model2)
-        final_model.add_constraint_eq_zero(sum(x.values()) - K, lam=5)
-        res = anneal_pubo(final_model, num_anneals=10)
+        final_model.add_constraint_eq_zero(sum(x.values()) - K, lam=50)
+        final_model = final_model.to_qubo()
+        res = anneal_qubo(final_model, num_anneals=10)
         model_solution = res.best.state
 
         print("l is " + str(round(l,1)))

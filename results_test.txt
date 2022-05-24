@@ -1,0 +1,14 @@
+
+The best solution is: [0 1 0 1 1 1 0 0 0 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0]
+The result is: -390.00156521261994
+
+Asset 1 is: 0,1,0,1,1,1,0, = 58.0%
+Asset 2 is: 0,0,0,0,0,0,0, = 0.0%
+Asset 3 is: 1,0,1,0,0,0,1, = 42.0%
+Asset 4 is: 0,0,0,0,0,0,0, = 0.0%
+
+
+Asset 1 was selected
+Asset 2 was not selected
+Asset 3 was selected
+Asset 4 was not selected
