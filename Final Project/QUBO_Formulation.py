@@ -44,17 +44,16 @@ def cc_qubo(total_held: int, cov: np.ndarray, mean_returns: np.ndarray, \
     #initailising binary variables in an array
     vars_per_asset, total_var, diff = calc_variables(total_assets, \
         upper_bound, lower_bound)
-    weights, aux, diff_weights = initialise_variables(total_assets, lower_bound, diff, \
+    weights, aux = initialise_variables(total_assets, lower_bound, diff, \
         vars_per_asset, total_var)
-    ##print('Weights: ' + str(weights))
 
     # creates the cardinality constrained model
     hamiltonian_1 = create_hamiltonian_1(weights, total_assets, \
         weighting_param, cov)
     hamiltonian_2 = create_hamiltonian_2(weights, total_assets, \
         weighting_param, mean_returns)
-    model = create_cc_model(weights, aux, diff_weights, diff, hamiltonian_1, \
-        hamiltonian_2, total_held)
+    model = create_cc_model(weights, aux, hamiltonian_1, hamiltonian_2, \
+        total_held)
 
     # converts the model to a numpy array
     bqm = model.to_bqm()
@@ -65,9 +64,8 @@ def cc_qubo(total_held: int, cov: np.ndarray, mean_returns: np.ndarray, \
 
     return qubo_array
 
-def create_cc_model(weights: Array, aux: Array, diff_weights: Array, \
-    diff: float, hamiltonian_1: object, hamiltonian_2: object, total_held: int)\
-         -> object:
+def create_cc_model(weights: Array, aux: Array, hamiltonian_1: object, \
+    hamiltonian_2: object, total_held: int) -> object:
     """
     Creates the cardinality constrained model. Otherwise known as the objective
     function.
@@ -75,10 +73,6 @@ def create_cc_model(weights: Array, aux: Array, diff_weights: Array, \
     Args:
         weights: A list of expressions for each assets weight.
         aux: A list of the auxiliary variables.
-        diff_weights: A list of the expressions for each assets weights without
-        the lower bound added on.
-        diff: The difference between the lower and upper bound for asset
-        weights.
         hamiltonian_1: An objective function for the first hamiltonian.
         hamiltonian_2: An objective function for the second hamiltonian.
         total_held: Total number of assets to be held in the final portfolio
@@ -90,8 +84,7 @@ def create_cc_model(weights: Array, aux: Array, diff_weights: Array, \
     #Creates the final hamiltonian from the first and second hamiltonian
     final_h = hamiltonian_1 - hamiltonian_2
     #Adds the required constraints to the final hamiltonian
-    final_h = add_constraints(weights, aux, diff_weights, diff, final_h, \
-        total_held)
+    final_h = add_constraints(weights, aux, final_h, total_held)
     model = final_h.compile()
     return model
 
@@ -142,18 +135,14 @@ def create_hamiltonian_2(weights: list, total_assets: int, \
     hamiltonian_2 = (1 - weighting_param) * hamiltonian_2
     return hamiltonian_2
 
-def add_constraints(weights: Array, aux: Array,  diff_weights: Array, \
-    diff:float, final_h: object, total_held: int) -> object:
+def add_constraints(weights: Array, aux: Array, final_h: object, \
+    total_held: int) -> object:
     """
     Adds the required constraints to the final hamiltonian.
 
     Args:
         weights: A list of expressions for each assets weight.
         aux: A list of the auxiliary variables.
-        diff_weights: A list of the expressions for each assets weights without
-        the lower bound added on.
-        diff: The difference between the lower and upper bound for asset
-        weights.
         final_h: The final total hamiltonian. The complete objective function
         describing the CCPO without constraints.
         total_held: Total number of assets to be held in the final portfolio
@@ -165,34 +154,31 @@ def add_constraints(weights: Array, aux: Array,  diff_weights: Array, \
         describing the CCPO with constraints added.
 
     """
-    penalty_1 = 200
+    penalty_1 = 30
     penalty_2 = 90
     #Adds the constraint for which assets are chose
     final_h += chosen_constraint(weights, aux, penalty_2)
     #Adds the cardinality constraint
     final_h += cardinality_constraint(aux, penalty_2, total_held)
     #Adds the constraint to make sure the total investment is distributed
-    final_h += total_investment_constraint(diff_weights, diff, penalty_1)
+    final_h += total_investment_constraint(weights, penalty_1)
     return final_h
 
-def total_investment_constraint(diff_weights: list, diff: float, penalty: int) \
+def total_investment_constraint(weights: Array, penalty: int) \
     -> object:
     """
     Creates the constraint to make sure that the entire investment will be
     distributed to the chosen assets.
 
     Args:
-        diff_weights: A list of the expressions for each assets weights without
-        the lower bound added on.
-        diff: The difference between the lower and upper bound for asset
-        weights.
+        weights: A list of expressions for each assets weight.
         penalty: The penalty value for this constraint.
 
     Returns:
         constraint: The expression for the constraint.
 
     """
-    constraint = penalty * ((((diff - sum(diff_weights))*100))**2)
+    constraint = penalty * (1 - sum(weights))**2
     return constraint
 
 def cardinality_constraint(aux: list, penalty: int, total_held: int) -> object:
@@ -237,7 +223,7 @@ def chosen_constraint(weights: list, aux: list, penalty: int) -> object:
 
 
 def encode_variables(total_assets: int, initial: list, lower_bound: float, \
-    diff: float, vars_per_asset: int) -> tuple[Array, Array]:
+    diff: float, vars_per_asset: int) -> Array:
     """
     Encodes the integer variables as binary variables.
 
@@ -252,11 +238,8 @@ def encode_variables(total_assets: int, initial: list, lower_bound: float, \
 
     Returns:
         weights: A list of the expressions for each assets weights.
-        diff_weights: A list of the expressions for each assets weights without
-        the lower bound added on.
     """
     weights = []
-    diff_weights = []
     variable_sum = 0
     count = 0
     max_coefficient = (diff*100) - (2 ** (vars_per_asset-1)) + 1
@@ -275,16 +258,11 @@ def encode_variables(total_assets: int, initial: list, lower_bound: float, \
         #this adds the lower bound to the variables sum and links it to that
         # assets auxiliary variable. This means if the variable isn't selected
         # then the lower_bound is set as 0.
-        #print(str(variable_sum))
-        diff_weights.append(variable_sum)
         variable_sum = variable_sum + lower_bound * initial[-i]
         weights.append(variable_sum)
         variable_sum = 0
-    print(str(diff_weights))
-    diff_weights = Array(diff_weights)
-    print('\n' + str(weights))
     weights = Array(weights)
-    return weights, diff_weights
+    return weights
 
 def initialise_variables(total_assets: int, lower_bound: float, diff: float, \
     vars_per_asset, total_var) -> tuple[Array, Array, Array]:
@@ -304,8 +282,6 @@ def initialise_variables(total_assets: int, lower_bound: float, diff: float, \
     Returns:
         weights: A list of the expressions for each assets weights.
         aux: A list of the auxiliary variables.
-        diff_weights: A list of the expressions for each assets weights without
-        the lower bound added on.
     """
     #creates the pyqubo Array of initial binary variables
     initial = Array.create('x', shape=(total_var), vartype='BINARY')
@@ -318,12 +294,10 @@ def initialise_variables(total_assets: int, lower_bound: float, diff: float, \
     aux = Array(aux)
 
     #creates a list of expressions relating to each assets weight.
-    weights, diff_weights = encode_variables(total_assets, initial, \
+    weights = encode_variables(total_assets, initial, \
         lower_bound, diff, vars_per_asset)
 
-    print(diff_weights)
-
-    return weights, aux, diff_weights
+    return weights, aux
 
 def calc_variables(total_assets: int, upper_bound: float, lower_bound: float) \
     -> tuple[int, int, float]:
